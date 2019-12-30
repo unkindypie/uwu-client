@@ -1,0 +1,22 @@
+{
+  "name": "uwu-client",
+  "version": "0.0.1",
+  "description": "version control system just like git",
+  "main": "index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "env-cmd -f ./config/dev.env nodemon src/index.js"
+  },
+  "author": "Maksim Bondarenko",
+  "license": "MIT",
+  "dependencies": {
+    "better-sqlite3": "^5.4.3",
+    "chalk": "^3.0.0",
+    "js-sha256": "^0.9.0",
+    "yargs": "^15.0.2"
+  },
+  "devDependencies": {
+    "env-cmd": "^10.0.1",
+    "nodemon": "^2.0.2"
+  }
+}
