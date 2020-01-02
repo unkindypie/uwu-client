@@ -2,6 +2,8 @@ const fs = require('fs');
 const path = require('path');
 const { deleteFolderRecursive } = require('../utils/files');
 const RepositoryDB = require('../db');
+require('./exploration');
+
 
 const init = ()=>{
     const uwuPath = path.resolve(process.cwd(), '.uwu');
@@ -15,6 +17,9 @@ const init = ()=>{
     fs.mkdirSync(uwuPath);
     const repo = new RepositoryDB(uwuPath);
 
+    repo.addTree(null, 'some directory name');
+    const contents = fs.readFileSync(path.join(__dirname, 'exploration.js'));
+    repo.addFile('/efef/fffe', contents)
 
     console.log('Done!');
 }

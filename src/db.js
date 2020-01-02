@@ -4,7 +4,9 @@ const fs = require('fs');
 const { sha256 } = require('js-sha256');
 
 
+
 class RepositoryDB {
+
     constructor(uwuDirPath){
         uwuDirPath = path.resolve(uwuDirPath, 'db');
 
@@ -49,10 +51,12 @@ class RepositoryDB {
         })()
     }
     addTree(parent, dirname){
-
+        this.db.prepare("insert into trees values (null, @dirname, @parent)")
+        .run({dirname, parent});
     }
-    addFile(path, pointer){
-        
+    addFile(path, data){
+        this.db.prepare("insert into files values (@hash, @data)")
+        .run({hash: sha256.hex(data), data});
     }
 }
 
