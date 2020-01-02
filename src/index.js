@@ -1,6 +1,9 @@
 const yargs = require('yargs');
 const init = require('./core/init.js');
-const { uwuDirRoot } = require('./global.js');
+const global = require('./global.js');
+const fs = require('fs');
+global.initialized = fs.existsSync(global.uwuDirRoot);
+
 
 yargs.command({
     command: 'init',
