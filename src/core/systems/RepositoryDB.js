@@ -1,7 +1,7 @@
 const Database = require('better-sqlite3');
 const path = require('path');
 const fs = require('fs');
-const global = require('./global');
+const global = require('../../global');
 const { sha256 } = require('js-sha256');
 
 
@@ -50,7 +50,7 @@ class RepositoryDB {
 
             //treeFiles table
             this.db
-                .prepare("create table treeFiles (id integer primary key autoincrement, fileId varchar(64), treeId integer, foreign key (fileId) references files(hash), foreign key (treeId) references trees(id))")
+                .prepare("create table treeFiles (id integer primary key autoincrement, fileId varchar(64), treeId integer, fileName nvarchar(255), foreign key (fileId) references files(hash), foreign key (treeId) references trees(id))")
                 .run();
         })()
     }
@@ -116,18 +116,18 @@ class RepositoryDB {
         });
         return result;
     }
-    addFile(data, pathArray) {
+
+
+    addFile(data, pathArray, fileName) {
         const hash = sha256.hex(data);
         this.db.transaction(()=>{
             this.db.prepare("insert or ignore into files values (@hash, @data)")
             .run({ hash, data });
-            this.db.prepare("insert into treeFiles values (null, @hash, @treeId)")
-            .run({ hash, treeId: this.findDirByPathArray(pathArray) });
+            this.db.prepare("insert into treeFiles values (null, @hash, @treeId, @fileName)")
+            .run({ hash, treeId: this.findDirByPathArray(pathArray), fileName });
         })()
     }
-    addFileToDir(filePath, data) {
 
-    }
 }
 
 module.exports = RepositoryDB;

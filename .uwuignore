@@ -1,0 +1,7 @@
+.git
+node_modules
+#comment exapmle
+src/core/exploration.js
+.vscode
+.gitignore
+config

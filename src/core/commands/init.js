@@ -1,8 +1,8 @@
 const fs = require('fs');
 const path = require('path');
-const RepositoryDB = require('../db');
-const global = require('../global');
-const Explorer = require('./exploration');
+const RepositoryDB = require('../systems/RepositoryDB');
+const global = require('../../global');
+const Explorer = require('../systems/Explorer');
 
 
 const init = ()=>{

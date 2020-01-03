@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
-const global = require('../global');
-const RepositoryDB = require('../db');
+const global = require('../../global');
+const RepositoryDB = require('./RepositoryDB');
 const chalk = require('chalk');
 let repo = null;
 class Explorer {
@@ -10,27 +10,30 @@ class Explorer {
         repo = repo_;
         //adding the root directory to the repository data base 
         repo.addTree(null, path.parse(global.projectDirRoot).name);
-        //recursive walk through dirs in the project and adding them to the db
+        //recursive walk through dirs in the project and adding them to the db including files and relations between files and dirs
         this._exploreDir(global.projectDirRoot);
 
     }
-    
+    static isIgnored(path){
+        return global.uwuIgnore.some(ignoredPath => path === ignoredPath);
+    }
+
     static _exploreDir(initialPath, subdirs = []){
 
         const currentPath = path.resolve(initialPath, ...subdirs);
         const contents = fs.readdirSync(currentPath);
         contents.forEach((entry)=>{
-            if(entry === '.git' || entry === 'node_modules') return;
 
             const nextPath = path.resolve(currentPath, entry);
+            if(this.isIgnored(nextPath)) return;
+            
             //console.log(entry, subdirs, nextPath);
-
             if(fs.lstatSync(nextPath).isDirectory()){
                 repo.addTree(repo.findDirByPathArray(subdirs), entry);
                 this._exploreDir(initialPath, [...subdirs, entry]);
             }
-            else { //adding files
-                repo.addFile(this.readFile(nextPath), subdirs);
+            else { //adding file to current directory
+                repo.addFile(this.readFile(nextPath), subdirs, entry);
             }
         })
         
