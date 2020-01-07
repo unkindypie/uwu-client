@@ -3,7 +3,7 @@ const path = require('path');
 const RepositoryDB = require('../systems/RepositoryDB');
 const global = require('../../global');
 const Explorer = require('../systems/Explorer');
-
+const chalk = require('chalk');
 
 const init = ()=>{
     const uwuPath = global.uwuDirRoot;
@@ -18,36 +18,18 @@ const init = ()=>{
     try{
         fs.mkdirSync(uwuPath);
         const repo = new RepositoryDB();
-
-        // repo.addTree(null, 'MyProjectRoot');
-        // const contents = fs.readFileSync(path.join(__dirname, 'exploration.js'));
-        // repo.addFile(contents);
-        // repo.addFile(contents);
-        // repo.addFile(contents);
-        // repo.addFile(contents);
-
-        // repo.addTree(1, 'src');
-        // repo.addTree(2, 'core');
-        // repo.addTree(3, 'dummyfolder');
-
-        // //console.log(repo.findDirByPath('\\src\\core'));
-        // console.log(repo.findDirByPathString('/src/core'));
-        // console.log(repo.findDirByPathString('/'));
-        // console.log(repo.findDirByPathString('/'));
-        // console.log(repo.findDirByPathArray(['src', 'core']));
-        // console.log(repo.findDirByPathArray([]));
-
         Explorer.explore(repo);
-
+        console.log('Done!');
     } catch(e){
         global.initialized = false;
-        console.log('Something went wrong!', e);
+        if(process.env.DEBUG){
+            console.log(chalk.bgRed.bold('Something went wrong!'), e);
+        }
+        else{
+            console.log(chalk.bgRed.bold('Something went wrong!'), e.message);
+        }
+        
     }   
-    
-
-    
-
-    console.log('Done!');
 }
 
 module.exports = init;

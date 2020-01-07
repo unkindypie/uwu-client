@@ -40,9 +40,6 @@ class RepositoryDB {
                 .prepare("create table files (hash varchar(64) primary key, file blob not null)")
                 .run();
 
-            // this.db
-            // .prepare("create trigger files_insert_trigger instead of insert on files begin select * from files end;")
-
             //tree table
             this.db
                 .prepare("create table trees (id integer primary key autoincrement, dirname nvarchar(255), parent integer, foreign key (parent) references trees(id))")
@@ -52,11 +49,27 @@ class RepositoryDB {
             this.db
                 .prepare("create table treeFiles (id integer primary key autoincrement, fileId varchar(64), treeId integer, fileName nvarchar(255), foreign key (fileId) references files(hash), foreign key (treeId) references trees(id))")
                 .run();
+            //commits table
+            this.db
+                .prepare("create table commits (id integer primary key autoincrement, parentId integer, author integer, treeId integer, description nvarchar(255), timestamp unsigned big int, foreign key (treeId) references trees(id), foreign key (parentId) references commits(id))")
+                .run();
+            //branches table
+            this.db
+                .prepare("create table branches (id integer primary key autoincrement, head integer, name nvarhar(15), foreign key (head) references commits(id))")
+                .run();
         })()
     }
-    addTree(parent, dirname) {
-        this.db.prepare("insert into trees values (null, @dirname, @parent)")
+    addTree(parent, dirname, getId) {
+        let resultId;
+        this.db.transaction(()=>{
+            this.db.prepare("insert into trees values (null, @dirname, @parent)")
             .run({ dirname, parent });
+            if(getId){
+                resultId = this.db.prepare('select last_insert_rowid() as id')
+                .get().id;
+            }
+        })()
+        return resultId;
     }
     /**
      * 
@@ -126,6 +139,11 @@ class RepositoryDB {
             this.db.prepare("insert into treeFiles values (null, @hash, @treeId, @fileName)")
             .run({ hash, treeId: this.findDirByPathArray(pathArray), fileName });
         })()
+    }
+
+    addCommit(rootTreeId, description){
+        //todo: автор и ссылка на текущую ветку должны лежать в отдельной таблице или файле и выбираться здесь
+        //автоматически
     }
 
 }

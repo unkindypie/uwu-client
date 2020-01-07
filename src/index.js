@@ -8,9 +8,7 @@ global.initialized = fs.existsSync(global.uwuDirRoot);
 yargs.command({
     command: 'init',
     describe: 'Creates empty uwu repository.',
-    handler(args){
-        init();
-    }
+    handler: init
 })
 
 

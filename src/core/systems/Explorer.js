@@ -9,9 +9,10 @@ class Explorer {
     static explore(repo_ = new RepositoryDB()){
         repo = repo_;
         //adding the root directory to the repository data base 
-        repo.addTree(null, path.parse(global.projectDirRoot).name);
+        const rootTreeId = repo.addTree(null, path.parse(global.projectDirRoot).name, true);
         //recursive walk through dirs in the project and adding them to the db including files and relations between files and dirs
         this._exploreDir(global.projectDirRoot);
+        return rootTreeId; 
 
     }
     static isIgnored(path){
