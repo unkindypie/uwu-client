@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node src/index.js",
-    "dev": "env-cmd -f ./config/dev.env nodemon src/index.js init"
+    "dev": "env-cmd -f ./config/dev.env nodemon src/index.js commit -m 'testing'"
   },
   "author": "Maksim Bondarenko",
   "license": "MIT",

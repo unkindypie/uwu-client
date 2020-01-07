@@ -1,32 +1,32 @@
 const fs = require('fs');
-const path = require('path');
 const RepositoryDB = require('../systems/RepositoryDB');
 const global = require('../../global');
 const Explorer = require('../systems/Explorer');
 const chalk = require('chalk');
+const Console = require('../../utils/ConsolePrintPresets');
 
 const init = ()=>{
     const uwuPath = global.uwuDirRoot;
     if(global.initialized){
-        console.log('Uwu repository already initialized in this directory! Reinitializing started...')
+        Console.commonPrint('It seems that uwu repository already initialized in this directory! Reinitialization started...')
         Explorer.fsDeleteFolderRecursive(uwuPath);
         global.initialized = false;
     }
     else{
-        console.log('Initializing...');
+        Console.commonPrint('Welcome to uwu!\n', 'Initializing...');
     }
     try{
         fs.mkdirSync(uwuPath);
         const repo = new RepositoryDB();
-        Explorer.explore(repo);
-        console.log('Done!');
+        repo.db.close();
+        Console.successPrint('Done!');
     } catch(e){
         global.initialized = false;
-        if(process.env.DEBUG){
-            console.log(chalk.bgRed.bold('Something went wrong!'), e);
+        if(global.debug){
+            Console.errorPrint('Something went wrong!\n', e);
         }
         else{
-            console.log(chalk.bgRed.bold('Something went wrong!'), e.message);
+            Console.errorPrint('Something went wrong!\n', e.message);
         }
         
     }   

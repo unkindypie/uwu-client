@@ -20,7 +20,7 @@ class RepositoryDB {
         //process.on('exit', ()=> this.db.close());
     }
     onSqlLog(message) {
-        if (!process.env.DEBUG) return;
+        if (!global.debug) return;
         console.log('SQLite:', message)
     }
 
@@ -56,6 +56,10 @@ class RepositoryDB {
             //branches table
             this.db
                 .prepare("create table branches (id integer primary key autoincrement, head integer, name nvarhar(15), foreign key (head) references commits(id))")
+                .run();
+            //repo_info table (reference to current branch is stored here)
+            this.db
+                .prepare("create table repo_info (head integer, uwu_version numeric)")
                 .run();
         })()
     }
