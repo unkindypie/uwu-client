@@ -3,8 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const global = require('../../global');
 const { sha256 } = require('js-sha256');
-
-
+const Console = require('../../utils/ConsolePrintPresets');
 
 class RepositoryDB {
 
@@ -20,7 +19,7 @@ class RepositoryDB {
         //process.on('exit', ()=> this.db.close());
     }
     onSqlLog(message) {
-        if (!global.debug) return;
+        if (global.debug) return;
         console.log('SQLite:', message)
     }
 
@@ -31,6 +30,16 @@ class RepositoryDB {
         this.db = new Database(uwuDirPath, { verbose: this.onSqlLog });
 
         this.createTables();
+        this.changeRepoProperies({
+            uwuVersion: global.currentUwuVersion,
+        })
+    }
+
+    getRepoProperties(){
+        return JSON.parse(fs.readFileSync(path.resolve(global.uwuDirRoot, 'properties.json')));
+    }
+    changeRepoProperies(propsObj){
+        fs.writeFileSync(path.resolve(global.uwuDirRoot, 'properties.json'), JSON.stringify(propsObj));
     }
 
     createTables() {
@@ -55,12 +64,12 @@ class RepositoryDB {
                 .run();
             //branches table
             this.db
-                .prepare("create table branches (id integer primary key autoincrement, head integer, name nvarhar(15), foreign key (head) references commits(id))")
+                .prepare("create table branches (name nvarhar(15) primary key, head integer, foreign key (head) references commits(id))")
                 .run();
-            //repo_info table (reference to current branch is stored here)
-            this.db
-                .prepare("create table repo_info (head integer, uwu_version numeric)")
-                .run();
+            // //repo_info table (reference to current branch is stored here)
+            // this.db
+            //     .prepare("create table repo_info (head nvarhar(15), uwu_version numeric, foreign key (head) references branches(name))")
+            //     .run();
         })()
     }
     addTree(parent, dirname, getId) {
@@ -121,7 +130,7 @@ class RepositoryDB {
         filePath.forEach((dirname, index) => {
             const dir = this.db.prepare("select id, dirname from trees where parent = @nextId and dirname = @dirname").all({ nextId: next || 1, dirname })[0];
 
-            //folder does't exist
+            //folder doesn't exist
             if (!dir) {
                 return;
             }
@@ -133,8 +142,31 @@ class RepositoryDB {
         });
         return result;
     }
+    getBranch(branchName){
+        return this.db
+            .prepare("select * from branches where name = @branchName")
+            .get({ branchName });
+    }
+    addBranch(branchName, headCommit) {
+        if(branchName === '' || this.getBranch(branchName)){
+            Console.errorPrint(`Branch ${branchName} already exist in this repository.`)
+            process.exit(-1);
+        }
+        this.db
+            .prepare('insert into branches values (@branchName, @headCommit)')
+            .run({branchName, headCommit});
+    }
+    checkoutToBranch(branchName) {
+        const exists = !!this.getBranch(branchName);
 
+        if(!exists){
+            Console.errorPrint(`Branch ${branchName} doesn't exist in this repository.`)
+            process.exit(-1);
+        }
 
+        this.changeRepoProperies({ ...this.getRepoProperties(), head: branchName})
+        global.currentBranch = branchName;
+    }
     addFile(data, pathArray, fileName) {
         const hash = sha256.hex(data);
         this.db.transaction(()=>{
@@ -145,9 +177,25 @@ class RepositoryDB {
         })()
     }
 
+    getHead(){
+        return this.db
+            .prepare("select head from branches where name = @branch")
+            .get({ branch: global.currentBranch }).head;
+    }
+
     addCommit(rootTreeId, description){
-        //todo: автор и ссылка на текущую ветку должны лежать в отдельной таблице или файле и выбираться здесь
-        //автоматически
+        
+        //TODO: set the author
+        this.db.transaction(()=>{
+            const head = this.getHead();
+            this.db
+                .prepare('insert into commits values (null, @head, null, @rootTreeId, @description, @time)')
+                .run({ rootTreeId, description, head, time: Date.now() })
+
+            this.db
+                .prepare("update branches set head = ( select last_insert_rowid() ) where name = @headBranch")
+                .run({ headBranch: global.currentBranch })
+        })()
     }
 
 }

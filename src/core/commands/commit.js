@@ -8,15 +8,16 @@ const init = require('./init');
 module.exports = (args)=>{
     const description = args.m || args.message;
     if(!global.initialized){
-        Console.errorPrint('Uwu is not initialized in this directory! This command must be used in the root of the project directory.')
+        Console.errorPrint('Repository is not initialized in this directory or you are trying to use it not in the root directory. :c')
         process.exit(-1);
     }
     try{
-        init();
         
         Console.commonPrint('Creating commit...')
         const repo = new RepositoryDB();
-        Explorer.explore(repo);
+        const rootTree = Explorer.explore(repo);
+        repo.addCommit(rootTree, description);
+
         Console.successPrint('Done!');
     }
     catch(e){
