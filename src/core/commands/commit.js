@@ -13,8 +13,10 @@ module.exports = (args)=>{
         
         Console.commonPrint('Creating commit...')
         const repo = new RepositoryDB();
-        const rootTree = Explorer.explore(repo);
-        repo.addCommit(rootTree, description);
+        repo.transaction(()=>{
+            repo.addCommit(Explorer.explore(repo), description);
+        })
+        
 
         Console.successPrint('Done!');
     }

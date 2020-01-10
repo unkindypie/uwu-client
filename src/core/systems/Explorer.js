@@ -5,7 +5,11 @@ const RepositoryDB = require('./RepositoryDB');
 const chalk = require('chalk');
 let repo = null;
 class Explorer {
-
+    /**
+     * 
+     * @param {*} repo_ 
+     * Translates physical directory on disk to tables on data base including directories and files
+     */
     static explore(repo_ = new RepositoryDB()){
         repo = repo_;
         //adding the root directory to the repository data base 

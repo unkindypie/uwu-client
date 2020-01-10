@@ -17,9 +17,12 @@ class RepositoryDB {
             this.db = new Database(path.resolve(uwuDirPath, 'repo.db'), { verbose: this.onSqlLog });
         }
         this.preparedStatments = {
-            getBranches: this.db.prepare("select * from branches")
+            getBranches: this.db.prepare("select * from branches"),
         }
         //process.on('exit', ()=> this.db.close());
+    }
+    transaction(callback){
+        this.db.transaction(callback)();
     }
     onSqlLog(message) {
         if (global.debug) return;
@@ -97,7 +100,7 @@ class RepositoryDB {
         const targetDirName = path.parse(filePath).name;
 
         if (parsedDirs.length === 2 && parsedDirs[0] === '' && parsedDirs[1] === '') {
-            return 1; //projet root dir
+            return 1; //project root dir
         }
         parsedDirs = parsedDirs.filter((_, i) => i != 0);
         let next;
@@ -145,6 +148,21 @@ class RepositoryDB {
         });
         return result;
     }
+    /**
+     * Translets root tree from the commit to Tree objects and Files objects (blobs are not copied to ram, only their hash)
+     * @param {*} commit 
+     * referense to commit in the data base
+     */
+    explore(commit) {
+        this.db.transaction(()=>{
+            const rootTreeId = this.db
+                .prepare("select treeId from commits where id = @head")
+                .get({ head: commit });
+
+
+        })()
+    }
+
     getBranch(branchName){
         return this.db
             .prepare("select * from branches where name = @branchName")
@@ -203,7 +221,16 @@ class RepositoryDB {
                 .run({ headBranch: global.currentBranch })
         })()
     }
-
+    getAllCommits(){
+        
+    }
+    getCommits(headCommit){
+        const result = this.db
+            .prepare("with recursive parent_commit(parent, id, treeId, description, timestamp, author) as ( values(@headCommit, null, null, null, null, null) union select parentId as parent, commits.id, commits.treeId, commits.description, commits.timestamp, commits.author from commits, parent_commit where parent_commit.parent = commits.id) select parent, id, treeid, author, description, timestamp from parent_commit")
+            .all({ headCommit });
+        result.shift();
+        return result;
+    }
 }
 
 module.exports = RepositoryDB;
