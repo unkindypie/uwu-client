@@ -1,6 +1,6 @@
 {
   "name": "uwu-client",
-  "version": "0.0.1",
+  "version": "0.1",
   "description": "version control system just like git",
   "main": "index.js",
   "scripts": {

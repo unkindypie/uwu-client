@@ -16,6 +16,9 @@ class RepositoryDB {
         else {
             this.db = new Database(path.resolve(uwuDirPath, 'repo.db'), { verbose: this.onSqlLog });
         }
+        this.preparedStatments = {
+            getBranches: this.db.prepare("select * from branches")
+        }
         //process.on('exit', ()=> this.db.close());
     }
     onSqlLog(message) {
@@ -146,6 +149,9 @@ class RepositoryDB {
         return this.db
             .prepare("select * from branches where name = @branchName")
             .get({ branchName });
+    }
+    getBranches(){
+        return this.preparedStatments.getBranches.all();
     }
     addBranch(branchName, headCommit) {
         if(branchName === '' || this.getBranch(branchName)){

@@ -1,11 +1,9 @@
 const yargs = require('yargs');
-const fs = require('fs');
-const global = require('./global.js');
 //commands
 const init = require('./core/commands/init.js');
 const commit = require('./core/commands/commit');
+const branch = require('./core/commands/branch');
 
-global.initialized = fs.existsSync(global.uwuDirRoot);
 
 
 yargs.command({
@@ -18,6 +16,12 @@ yargs.command({
     command: 'commit',
     describe: 'Makes record of current state of the working directory except files or paths which are listed in .uwuignore.',
     handler: commit
+})
+
+yargs.command({
+    command: 'branch',
+    describe: 'Multifunctional command for listing, creating and deleting branches.',
+    handler: branch
 })
 
 
