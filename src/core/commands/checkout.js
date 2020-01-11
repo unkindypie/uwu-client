@@ -15,7 +15,7 @@ module.exports = (args)=>{
         }
 
         const repo = new RepositoryDB();
-
+        
         //TODO check that if we are detached we should switch to this branch
         if(args._[1] === global.currentBranch || args._[1] === repo.getHead()){
             Console.commonPrint('You are already on this branch or commit.');

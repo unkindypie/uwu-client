@@ -91,50 +91,23 @@ class RepositoryDB {
         return resultId;
     }
     /**
-     * 
-     * @param {string} filePath 
-     * Finds db column id of folder with specified path. Path should start from root of the project.
-     */
-    findDirByPathString(filePath) {
-        let parsedDirs = filePath.split(path.sep);
-        const targetDirName = path.parse(filePath).name;
-
-        if (parsedDirs.length === 2 && parsedDirs[0] === '' && parsedDirs[1] === '') {
-            return 1; //project root dir
-        }
-        parsedDirs = parsedDirs.filter((_, i) => i != 0);
-        let next;
-        let result = -1;
-        parsedDirs.forEach((dirname, index) => {
-            const dir = this.db.prepare("select id, dirname from trees where parent = @nextId and dirname = @dirname").all({ nextId: next || 1, dirname })[0];
-
-            //folder does't exist
-            if (!dir) {
-                return;
-            }
-
-            if (index === parsedDirs.length - 1 && dir.dirname === targetDirName) {
-                result = dir.id;
-            }
-            next = dir.id;
-        });
-        return result;
-    }
-    /**
      * @param  {Array} filePath
      * Finds db column id of the folder with specified path stored as array of path entries without specifing root of the project.
      * Empty array will be understood as root of the project directory.
      */
-    findDirByPathArray(filePath) {
+    findDirByPathArray(filePath, rootTreeId) {
         if (filePath.length === 0) {
-            return 1;
+            return rootTreeId;
         }
         const targetDirName = filePath[filePath.length - 1];
 
-        let next;
+        const trees = this.getSubtrees(rootTreeId);
+
+        let next = rootTreeId;
         let result = -1;
         filePath.forEach((dirname, index) => {
-            const dir = this.db.prepare("select id, dirname from trees where parent = @nextId and dirname = @dirname").all({ nextId: next || 1, dirname })[0];
+            //const dir = this.db.prepare("select id, dirname from trees where parent = @nextId and dirname = @dirname").get({ nextId: next || 1, dirname });
+            let dir = trees.filter( tree => tree.parent === next && dirname === tree.dirname )[0];
 
             //folder doesn't exist
             if (!dir) {
@@ -142,10 +115,20 @@ class RepositoryDB {
             }
 
             if (index === filePath.length - 1 && dir.dirname === targetDirName) {
-                result = dir.id;
+                result = dir.treeId;
             }
-            next = dir.id;
+            next = dir.treeId;
         });
+        return result;
+    }
+    getSubtrees(rootTreeId){
+        const result = this.db
+            .prepare("with recursive explore_dir(treeId, parent, dirname) as ( values(@rootTreeId, null, null)"+
+                    " union select trees.id, trees.parent, trees.dirname from trees, explore_dir" + 
+                    " where explore_dir.treeId = trees.parent)"+
+                    " select treeId, parent, dirname from explore_dir")
+            .all({ rootTreeId });
+        result.shift();
         return result;
     }
     /**
@@ -154,16 +137,21 @@ class RepositoryDB {
      * referense to commit in the data base
      */
     explore(commit) {
+        let result;
         this.db.transaction(()=>{
             const rootTreeId = this.db
                 .prepare("select treeId from commits where id = @head")
-                .get({ head: commit });
-            // const result = this.db
-            //     .prepare("with recursive parent_commit(parent) as ( values(@rootTreeId, null, null, null, null, null) union select parentId as parent, commits.id, commits.treeId, commits.description, commits.timestamp, commits.author from commits, parent_commit where parent_commit.parent = commits.id) select parent, id, treeid, author, description, timestamp from parent_commit")
-            //     .all({ rootTreeId });
-            // result.shift();
+                .get({ head: commit }).treeId;
+            result = this.db
+                .prepare("with recursive explore_dir(treeId, parent, dirname) as ( values(@rootTreeId, null, null)"+
+                        " union select trees.id, trees.parent, trees.dirname from trees, explore_dir" + 
+                        " where explore_dir.treeId = trees.parent)"+
+                        " select treeId, parent, dirname from explore_dir")
+                .all({ rootTreeId });
+            //result.shift();
 
         })()
+        return result;
     }
     // Branch:
     getBranch(branchName){
@@ -195,13 +183,13 @@ class RepositoryDB {
         global.currentBranch = branchName;
     }
     // File:
-    addFile(data, pathArray, fileName) {
+    addFile(data, fileName, treeId) {
         const hash = sha256.hex(data);
         this.db.transaction(()=>{
             this.db.prepare("insert or ignore into files values (@hash, @data)")
             .run({ hash, data });
             this.db.prepare("insert into treeFiles values (null, @hash, @treeId, @fileName)")
-            .run({ hash, treeId: this.findDirByPathArray(pathArray), fileName });
+            .run({ hash, treeId, fileName });
         })()
     }
     // Commit:

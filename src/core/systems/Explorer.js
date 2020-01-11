@@ -5,6 +5,7 @@ const RepositoryDB = require('./RepositoryDB');
 const chalk = require('chalk');
 let repo = null;
 class Explorer {
+    static _rootTree = null;
     /**
      * 
      * @param {*} repo_ 
@@ -13,10 +14,10 @@ class Explorer {
     static explore(repo_ = new RepositoryDB()){
         repo = repo_;
         //adding the root directory to the repository data base 
-        const rootTreeId = repo.addTree(null, path.parse(global.projectDirRoot).name, true);
+        this._rootTree = repo.addTree(null, path.parse(global.projectDirRoot).name, true);
         //recursive walk through dirs in the project and adding them to the db including files and relations between files and dirs
         this._exploreDir(global.projectDirRoot);
-        return rootTreeId; 
+        return this._rootTree; 
 
     }
     static isIgnored(path){
@@ -32,13 +33,15 @@ class Explorer {
             const nextPath = path.resolve(currentPath, entry);
             if(this.isIgnored(nextPath)) return;
             
+            const treeId = repo.findDirByPathArray(subdirs, this._rootTree);
+
             //console.log(entry, subdirs, nextPath);
             if(fs.lstatSync(nextPath).isDirectory()){
-                repo.addTree(repo.findDirByPathArray(subdirs), entry);
+                repo.addTree(treeId, entry);
                 this._exploreDir(initialPath, [...subdirs, entry]);
             }
             else { //adding file to current directory
-                repo.addFile(this.readFile(nextPath), subdirs, entry);
+                repo.addFile(this.readFile(nextPath), entry, treeId);
             }
         })
         
