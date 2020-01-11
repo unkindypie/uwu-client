@@ -4,6 +4,10 @@ const Explorer = require('../systems/Explorer');
 const Console = require('../../utils/ConsolePrintPresets');
 
 module.exports = (args)=>{
+    if(!global.initialized){
+        Console.errorPrint('Repository is not initialized in this directory or you are trying to use it not in the root directory. :c')
+        process.exit(-1);
+    }
     try{
         const repo = new RepositoryDB();
         if(args._[1]){

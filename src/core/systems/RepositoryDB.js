@@ -158,11 +158,14 @@ class RepositoryDB {
             const rootTreeId = this.db
                 .prepare("select treeId from commits where id = @head")
                 .get({ head: commit });
-
+            // const result = this.db
+            //     .prepare("with recursive parent_commit(parent) as ( values(@rootTreeId, null, null, null, null, null) union select parentId as parent, commits.id, commits.treeId, commits.description, commits.timestamp, commits.author from commits, parent_commit where parent_commit.parent = commits.id) select parent, id, treeid, author, description, timestamp from parent_commit")
+            //     .all({ rootTreeId });
+            // result.shift();
 
         })()
     }
-
+    // Branch:
     getBranch(branchName){
         return this.db
             .prepare("select * from branches where name = @branchName")
@@ -191,6 +194,7 @@ class RepositoryDB {
         this.changeRepoProperies({ ...this.getRepoProperties(), head: branchName})
         global.currentBranch = branchName;
     }
+    // File:
     addFile(data, pathArray, fileName) {
         const hash = sha256.hex(data);
         this.db.transaction(()=>{
@@ -200,7 +204,7 @@ class RepositoryDB {
             .run({ hash, treeId: this.findDirByPathArray(pathArray), fileName });
         })()
     }
-
+    // Commit:
     getHead(){
         return this.db
             .prepare("select head from branches where name = @branch")
@@ -221,9 +225,7 @@ class RepositoryDB {
                 .run({ headBranch: global.currentBranch })
         })()
     }
-    getAllCommits(){
-        
-    }
+
     getCommits(headCommit){
         const result = this.db
             .prepare("with recursive parent_commit(parent, id, treeId, description, timestamp, author) as ( values(@headCommit, null, null, null, null, null) union select parentId as parent, commits.id, commits.treeId, commits.description, commits.timestamp, commits.author from commits, parent_commit where parent_commit.parent = commits.id) select parent, id, treeid, author, description, timestamp from parent_commit")

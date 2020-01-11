@@ -4,6 +4,10 @@ const Explorer = require('../systems/Explorer');
 const Console = require('../../utils/ConsolePrintPresets');
 
 module.exports = (args)=>{
+    if(!global.initialized){
+        Console.errorPrint('Repository is not initialized in this directory or you are trying to use it not in the root directory. :c')
+        process.exit(-1);
+    }
     try{
         if(!args._[1]){
             Console.errorPrint('No branch or commit specified! :c');
@@ -20,12 +24,14 @@ module.exports = (args)=>{
 
         //if argument is a branch
         if(repo.getBranches().some(({ name }) => name === args._[1])){
-            console.log('switchig...')
-
+            repo.checkoutToBranch(args._[1]);
+            //TODO checkout files
+            Console.commonPrint(`Switched to branch '${args._[1]}'`);
         }
         //if argumnet is a commit
         else if(repo.getCommits(repo.getHead()).some(commit=> commit.id === args._[1])){
             console.log('checking out to commit...');
+            console.log(repo.explore(args._[1]));
         }
         else {
             Console.errorPrint("There no commit or branch with this name. Maybe you are trying to checkout to commit in another branch? :(");
