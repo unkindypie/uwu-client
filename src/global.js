@@ -6,13 +6,15 @@ const uwuDirRoot = path.resolve(process.cwd(), '.uwu');
 const initialized = fs.existsSync(uwuDirRoot);
 const projectDirRoot = process.cwd();
 const _pathToUwuIgnore = path.resolve(projectDirRoot, '.uwuignore')
-let uwuIgnore = [];
+
+let uwuIgnore = ['.uwu'];
 if (fs.existsSync(_pathToUwuIgnore)) {
-    uwuIgnore = [...fs.readFileSync(_pathToUwuIgnore)
+    uwuIgnore = [...uwuIgnore, ...fs.readFileSync(_pathToUwuIgnore)
         .toString()
-        .split(os.EOL).filter((string) => string[0] !== '#'), '.uwu']
-        .map(string => path.resolve(projectDirRoot, string));
+        .split(os.EOL).filter((string) => string[0] !== '#')]
 }
+uwuIgnore = uwuIgnore.map(string => path.resolve(projectDirRoot, string));
+
 
 let currentBranch = null;
 const pathToProperties = path.resolve(uwuDirRoot, 'properties.json');

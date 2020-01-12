@@ -25,14 +25,15 @@ module.exports = (args)=>{
         //if argument is a branch
         if(repo.getBranches().some(({ name }) => name === args._[1])){
             repo.checkoutToBranch(args._[1]);
-            //TODO checkout files
+            Explorer.populateDir(repo.represent(repo.getHead()));
             Console.commonPrint(`Switched to branch '${args._[1]}'`);
         }
         //if argument is a commit
         else if(repo.getCommits(repo.getHead()).some(commit=> commit.id === args._[1])){
             console.log('checking out to commit...');
-            const rootTree = repo.explore(args._[1]);
-            Explorer.populateDir(rootTree);
+            //TODO: make a "detach" branch and checkout to this branch.
+            // when user checkouted from this branch, it should be deleted
+            Explorer.populateDir(repo.represent(args._[1]));
         }
         else {
             Console.errorPrint("There no commit or branch with this name. Maybe you are trying to checkout to commit in another branch? :(");

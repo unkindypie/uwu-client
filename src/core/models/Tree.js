@@ -10,5 +10,8 @@ class Tree {
         this.dirname = dirname;
         this.id = id;
     }
+    getDiff(Tree){
+        //TODO
+    }
 }
 module.exports = Tree;

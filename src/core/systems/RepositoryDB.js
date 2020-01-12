@@ -138,7 +138,7 @@ class RepositoryDB {
      * @param {*} commit 
      * referense to commit in the data base
      */
-    explore(commit) {
+    represent(commit) {
         const getStraightChildren = (trees, id) => {
             return trees.filter(tree => tree.parent === id);
         }
@@ -231,6 +231,12 @@ class RepositoryDB {
             .all({ headCommit });
         result.shift();
         return result;
+    }
+
+    getBlob(hash){
+        return this.db
+            .prepare("select file from files where hash = @hash")
+            .get({ hash }).file
     }
 }
 

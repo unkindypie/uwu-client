@@ -8,10 +8,12 @@
             "type": "node",
             "request": "launch",
             "name": "Launch Program",
+            "program": "${workspaceFolder}/src/index.js",
+            "cwd":"${workspaceFolder}/../uwu-playground",
             "skipFiles": [
                 "<node_internals>/**"
             ],
-            "program": "${workspaceFolder}\\src\\index.js"
+            "args": ["checkout 1"]
         }
     ]
 }
