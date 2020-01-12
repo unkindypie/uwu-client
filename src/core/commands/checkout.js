@@ -28,10 +28,11 @@ module.exports = (args)=>{
             //TODO checkout files
             Console.commonPrint(`Switched to branch '${args._[1]}'`);
         }
-        //if argumnet is a commit
+        //if argument is a commit
         else if(repo.getCommits(repo.getHead()).some(commit=> commit.id === args._[1])){
             console.log('checking out to commit...');
-            console.log(repo.explore(args._[1]));
+            const rootTree = repo.explore(args._[1]);
+            Explorer.populateDir(rootTree);
         }
         else {
             Console.errorPrint("There no commit or branch with this name. Maybe you are trying to checkout to commit in another branch? :(");

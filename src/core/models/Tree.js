@@ -3,9 +3,12 @@ class Tree {
     subtrees;
     files;
     dirname;
-    constructor(subtrees = [], files = [], dirname){
+    id;
+    constructor(subtrees = [], files = [], dirname, id){
         this.subtrees = subtrees;
         this.files = files;
         this.dirname = dirname;
+        this.id = id;
     }
 }
+module.exports = Tree;

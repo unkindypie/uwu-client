@@ -47,6 +47,13 @@ class Explorer {
         
     }
     
+    static populateDir(tree, path) {
+        if(!repo){
+            repo = new RepositoryDB();
+        }
+        
+    }
+
     static readFile(path){
         try{
             fs.accessSync(path, fs.constants.R_OK);

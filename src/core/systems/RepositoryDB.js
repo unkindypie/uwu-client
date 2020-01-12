@@ -4,6 +4,8 @@ const fs = require('fs');
 const global = require('../../global');
 const { sha256 } = require('js-sha256');
 const Console = require('../../utils/ConsolePrintPresets');
+const Tree = require('../models/Tree');
+const File = require('../models/File');
 
 class RepositoryDB {
 
@@ -21,7 +23,7 @@ class RepositoryDB {
         }
         //process.on('exit', ()=> this.db.close());
     }
-    transaction(callback){
+    transaction(callback) {
         this.db.transaction(callback)();
     }
     onSqlLog(message) {
@@ -41,10 +43,10 @@ class RepositoryDB {
         })
     }
 
-    getRepoProperties(){
+    getRepoProperties() {
         return JSON.parse(fs.readFileSync(path.resolve(global.uwuDirRoot, 'properties.json')));
     }
-    changeRepoProperies(propsObj){
+    changeRepoProperies(propsObj) {
         fs.writeFileSync(path.resolve(global.uwuDirRoot, 'properties.json'), JSON.stringify(propsObj));
     }
 
@@ -80,12 +82,12 @@ class RepositoryDB {
     }
     addTree(parent, dirname, getId) {
         let resultId;
-        this.db.transaction(()=>{
+        this.db.transaction(() => {
             this.db.prepare("insert into trees values (null, @dirname, @parent)")
-            .run({ dirname, parent });
-            if(getId){
+                .run({ dirname, parent });
+            if (getId) {
                 resultId = this.db.prepare('select last_insert_rowid() as id')
-                .get().id;
+                    .get().id;
             }
         })()
         return resultId;
@@ -107,7 +109,7 @@ class RepositoryDB {
         let result = -1;
         filePath.forEach((dirname, index) => {
             //const dir = this.db.prepare("select id, dirname from trees where parent = @nextId and dirname = @dirname").get({ nextId: next || 1, dirname });
-            let dir = trees.filter( tree => tree.parent === next && dirname === tree.dirname )[0];
+            let dir = trees.filter(tree => tree.parent === next && dirname === tree.dirname)[0];
 
             //folder doesn't exist
             if (!dir) {
@@ -121,12 +123,12 @@ class RepositoryDB {
         });
         return result;
     }
-    getSubtrees(rootTreeId){
+    getSubtrees(rootTreeId) {
         const result = this.db
-            .prepare("with recursive explore_dir(treeId, parent, dirname) as ( values(@rootTreeId, null, null)"+
-                    " union select trees.id, trees.parent, trees.dirname from trees, explore_dir" + 
-                    " where explore_dir.treeId = trees.parent)"+
-                    " select treeId, parent, dirname from explore_dir")
+            .prepare("with recursive explore_dir(treeId, parent, dirname) as ( values(@rootTreeId, null, null)" +
+                " union select trees.id, trees.parent, trees.dirname from trees, explore_dir" +
+                " where explore_dir.treeId = trees.parent)" +
+                " select treeId, parent, dirname from explore_dir")
             .all({ rootTreeId });
         result.shift();
         return result;
@@ -137,72 +139,81 @@ class RepositoryDB {
      * referense to commit in the data base
      */
     explore(commit) {
-        let result;
-        this.db.transaction(()=>{
-            const rootTreeId = this.db
-                .prepare("select treeId from commits where id = @head")
-                .get({ head: commit }).treeId;
-            result = this.db
-                .prepare("with recursive explore_dir(treeId, parent, dirname) as ( values(@rootTreeId, null, null)"+
-                        " union select trees.id, trees.parent, trees.dirname from trees, explore_dir" + 
-                        " where explore_dir.treeId = trees.parent)"+
-                        " select treeId, parent, dirname from explore_dir")
-                .all({ rootTreeId });
-            //result.shift();
-
-        })()
-        return result;
+        const getStraightChildren = (trees, id) => {
+            return trees.filter(tree => tree.parent === id);
+        }
+        const populateTree = (rootTree, trees) => {
+            const children = getStraightChildren(trees, rootTree.treeId)
+            const files = this.db
+                .prepare("select fileId, fileName from treeFiles where treeId = @treeId")
+                .all({ treeId: rootTree.treeId })
+                .map(file => new File(file));
+            return new Tree(
+                children.map(tree => populateTree(tree, trees)),
+                files,
+                rootTree.dirname,
+                rootTree.treeId
+            );
+        }
+        const rootTreeId = this.db
+            .prepare("select treeId from commits where id = @head")
+            .get({ head: commit }).treeId;
+        const subtrees = this.getSubtrees(rootTreeId)
+        const rootTree = this.db
+            .prepare("select id as treeId, parent, dirname from trees where id = @treeId")
+            .get({ treeId: rootTreeId })
+        return populateTree(rootTree, subtrees);
     }
     // Branch:
-    getBranch(branchName){
+    getBranch(branchName) {
         return this.db
             .prepare("select * from branches where name = @branchName")
             .get({ branchName });
     }
-    getBranches(){
+    getBranches() {
         return this.preparedStatments.getBranches.all();
     }
     addBranch(branchName, headCommit) {
-        if(branchName === '' || this.getBranch(branchName)){
+        if (branchName === '' || this.getBranch(branchName)) {
             Console.errorPrint(`Branch ${branchName} already exist in this repository.`)
             process.exit(-1);
         }
         this.db
             .prepare('insert into branches values (@branchName, @headCommit)')
-            .run({branchName, headCommit});
+            .run({ branchName, headCommit });
     }
     checkoutToBranch(branchName) {
         const exists = !!this.getBranch(branchName);
 
-        if(!exists){
+        if (!exists) {
             Console.errorPrint(`Branch ${branchName} doesn't exist in this repository.`)
             process.exit(-1);
         }
 
-        this.changeRepoProperies({ ...this.getRepoProperties(), head: branchName})
+        this.changeRepoProperies({ ...this.getRepoProperties(), head: branchName })
         global.currentBranch = branchName;
     }
     // File:
     addFile(data, fileName, treeId) {
         const hash = sha256.hex(data);
-        this.db.transaction(()=>{
+        this.db.transaction(() => {
             this.db.prepare("insert or ignore into files values (@hash, @data)")
-            .run({ hash, data });
+                .run({ hash, data });
             this.db.prepare("insert into treeFiles values (null, @hash, @treeId, @fileName)")
-            .run({ hash, treeId, fileName });
+                .run({ hash, treeId, fileName });
         })()
     }
     // Commit:
-    getHead(){
+    getHead() {
         return this.db
             .prepare("select head from branches where name = @branch")
             .get({ branch: global.currentBranch }).head;
     }
 
-    addCommit(rootTreeId, description){
-        
+    addCommit(rootTreeId, description) {
+
         //TODO: set the author
-        this.db.transaction(()=>{
+        this.db.transaction(() => {
             const head = this.getHead();
             this.db
                 .prepare('insert into commits values (null, @head, null, @rootTreeId, @description, @time)')
@@ -214,7 +225,7 @@ class RepositoryDB {
         })()
     }
 
-    getCommits(headCommit){
+    getCommits(headCommit) {
         const result = this.db
             .prepare("with recursive parent_commit(parent, id, treeId, description, timestamp, author) as ( values(@headCommit, null, null, null, null, null) union select parentId as parent, commits.id, commits.treeId, commits.description, commits.timestamp, commits.author from commits, parent_commit where parent_commit.parent = commits.id) select parent, id, treeid, author, description, timestamp from parent_commit")
             .all({ headCommit });
