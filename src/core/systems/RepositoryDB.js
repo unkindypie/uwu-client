@@ -9,11 +9,11 @@ const File = require('../models/File');
 
 class RepositoryDB {
 
-    constructor() {
+    constructor(args) {
         const uwuDirPath = path.resolve(global.uwuDirRoot, 'db');
 
         if (!fs.existsSync(path.resolve(uwuDirPath, 'repo.db'))) {
-            this.inititalize(uwuDirPath);
+            this.inititalize(uwuDirPath, { mode: args.debug ? 'debug' : 'production' });
         }
         else {
             this.db = new Database(path.resolve(uwuDirPath, 'repo.db'), { verbose: this.onSqlLog });
@@ -27,11 +27,11 @@ class RepositoryDB {
         this.db.transaction(callback)();
     }
     onSqlLog(message) {
-        if (global.debug) return;
+        if (!global.debug) return;
         console.log('SQLite:', message)
     }
 
-    inititalize(uwuDirPath) {
+    inititalize(uwuDirPath, initOptions) {
         fs.mkdirSync(uwuDirPath);
         uwuDirPath = path.resolve(uwuDirPath, 'repo.db');
 
@@ -40,6 +40,7 @@ class RepositoryDB {
         this.createTables();
         this.changeRepoProperies({
             uwuVersion: global.currentUwuVersion,
+            ...initOptions
         })
     }
 

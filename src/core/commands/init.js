@@ -4,7 +4,7 @@ const global = require('../../global');
 const Explorer = require('../systems/Explorer');
 const Console = require('../../utils/ConsolePrintPresets');
 
-const init = ()=>{
+const init = (args)=>{
     const uwuPath = global.uwuDirRoot;
     try{
         if(global.initialized){
@@ -17,7 +17,8 @@ const init = ()=>{
         }
 
         fs.mkdirSync(uwuPath);
-        const repo = new RepositoryDB();
+        global.debug = !!args.debug;
+        const repo = new RepositoryDB(args);
         repo.addBranch('master', null);
         repo.checkoutToBranch('master');
 
