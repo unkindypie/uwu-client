@@ -75,8 +75,8 @@ class RepositoryDB {
             //commits table
             this.db
                 .prepare("create table commits (id integer primary key autoincrement, parentId integer,"+
-                " author integer, treeId integer, description nvarchar(255), timestamp unsigned big int, "+
-                "foreign key (treeId) references trees(id), foreign key (parentId) references commits(id))")
+                " author integer, treeId integer, description nvarchar(255), timestamp unsigned big int, hash varchar(64),"+
+                " foreign key (treeId) references trees(id), foreign key (parentId) references commits(id))")
                 .run();
             //branches table
             this.db
@@ -243,6 +243,7 @@ class RepositoryDB {
             this.db.prepare("insert into treeFiles values (null, (select id from files where hash = @hash), @treeId, @nameId)")
                 .run({ hash, treeId, nameId });
         })()
+        return hash;
     }
     // Commit:
     getHead() {
@@ -251,14 +252,14 @@ class RepositoryDB {
             .get({ branch: global.currentBranch }).head;
     }
 
-    addCommit(rootTreeId, description) {
+    addCommit(rootTreeId, description, hash) {
 
         //TODO: set the author
         this.db.transaction(() => {
             const head = this.getHead();
             this.db
-                .prepare('insert into commits values (null, @head, null, @rootTreeId, @description, @time)')
-                .run({ rootTreeId, description, head, time: Date.now() })
+                .prepare('insert into commits values (null, @head, null, @rootTreeId, @description, @time, @hash)')
+                .run({ rootTreeId, description, head, time: Date.now(), hash })
 
             this.db
                 .prepare("update branches set head = ( select last_insert_rowid() ) where name = @headBranch")

@@ -3,6 +3,8 @@ const path = require('path');
 const global = require('../../global');
 const RepositoryDB = require('./RepositoryDB');
 const chalk = require('chalk');
+const { sha256 } = require('js-sha256');
+
 let repo = null;
 class Explorer {
     static _rootTree = null;
@@ -13,39 +15,45 @@ class Explorer {
      */
     static explore(repo_ = new RepositoryDB()) {
         repo = repo_;
+        
+        const rootFolderName = path.parse(global.projectDirRoot).name;
         //adding the root directory to the repository data base 
-        this._rootTree = repo.addTree(null, path.parse(global.projectDirRoot).name, true);
+        this._rootTree = repo.addTree(null, rootFolderName, true);
+
+        let accumulatedHash = "";
+
+        const exploreDir = (initialPath, subdirs = []) => {
+
+            const currentPath = path.resolve(initialPath, ...subdirs);
+            const contents = fs.readdirSync(currentPath);
+            contents.forEach((entry) => {
+                accumulatedHash += entry;
+
+                const nextPath = path.resolve(currentPath, entry);
+                if (this.isIgnored(nextPath)) return;
+    
+                const treeId = repo.findDirByPathArray(subdirs, this._rootTree);
+    
+                //console.log(entry, subdirs, nextPath);
+                if (fs.lstatSync(nextPath).isDirectory()) {
+                    repo.addTree(treeId, entry);
+                    exploreDir(initialPath, [...subdirs, entry]);
+                }
+                else { //adding file to current directory
+                    accumulatedHash += repo.addFile(this.readFile(nextPath), entry, treeId);
+                }
+            })
+    
+        }
         //recursive walk through dirs in the project and adding them to the db including files and relations between files and dirs
-        this._exploreDir(global.projectDirRoot);
-        return this._rootTree;
+        exploreDir(global.projectDirRoot);
+        return { rootTree: this._rootTree, hash: sha256(rootFolderName + accumulatedHash) };
 
     }
     static isIgnored(path) {
         return global.uwuIgnore.some(ignoredPath => path === ignoredPath);
     }
 
-    static _exploreDir(initialPath, subdirs = []) {
-
-        const currentPath = path.resolve(initialPath, ...subdirs);
-        const contents = fs.readdirSync(currentPath);
-        contents.forEach((entry) => {
-
-            const nextPath = path.resolve(currentPath, entry);
-            if (this.isIgnored(nextPath)) return;
-
-            const treeId = repo.findDirByPathArray(subdirs, this._rootTree);
-
-            //console.log(entry, subdirs, nextPath);
-            if (fs.lstatSync(nextPath).isDirectory()) {
-                repo.addTree(treeId, entry);
-                this._exploreDir(initialPath, [...subdirs, entry]);
-            }
-            else { //adding file to current directory
-                repo.addFile(this.readFile(nextPath), entry, treeId);
-            }
-        })
-
-    }
     /**
      * Writes to disk Tree object starting from the root of the project. This method is the oposit
      * to explore() because Tree object is representation of the root directory of the commit from data base.

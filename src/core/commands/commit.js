@@ -14,7 +14,8 @@ module.exports = (args)=>{
         Console.commonPrint('Creating commit...')
         const repo = new RepositoryDB();
         repo.transaction(()=>{
-            repo.addCommit(Explorer.explore(repo), description);
+            const { rootTree, hash } = Explorer.explore(repo);
+            repo.addCommit(rootTree, description, hash);
         })
         
 
