@@ -1,8 +1,12 @@
 class File {
     hash;
     fileName;
+    id;
+    treeFileId;
     constructor(dbFile){
-        this.hash = dbFile.fileId;
+        this.hash = dbFile.hash;
+        this.id = dbFile.fileId;
+        this.treeFileId = dbFile.id;
         this.fileName = dbFile.fileName;
     }
     getBlob(){

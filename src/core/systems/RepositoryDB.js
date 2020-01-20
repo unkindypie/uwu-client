@@ -20,6 +20,7 @@ class RepositoryDB {
         }
         this.preparedStatments = {
             getBranches: this.db.prepare("select * from branches"),
+            lastInsertedRowId: this.db.prepare('select last_insert_rowid() as id')
         }
         //process.on('exit', ()=> this.db.close());
     }
@@ -55,21 +56,27 @@ class RepositoryDB {
         this.db.transaction(() => {
             //files table
             this.db
-                .prepare("create table files (hash varchar(64) primary key, file blob not null)")
+                .prepare("create table files (id integer primary key autoincrement, hash varchar(64) unique, file blob not null)")
+                .run();
+
+            this.db
+                .prepare("create table entryNames (id integer primary key autoincrement, name nvarchar(255) unique)")
                 .run();
 
             //tree table
             this.db
-                .prepare("create table trees (id integer primary key autoincrement, dirname nvarchar(255), parent integer, foreign key (parent) references trees(id))")
+                .prepare("create table trees (id integer primary key autoincrement, dirnameId integer, parent integer, foreign key (parent) references trees(id), foreign key (dirnameId) references entryNames(id))")
                 .run();
 
             //treeFiles table
             this.db
-                .prepare("create table treeFiles (id integer primary key autoincrement, fileId varchar(64), treeId integer, fileName nvarchar(255), foreign key (fileId) references files(hash), foreign key (treeId) references trees(id))")
+                .prepare("create table treeFiles (id integer primary key autoincrement, fileId integer, treeId integer, filenameId, foreign key (fileId) references files(id), foreign key (treeId) references trees(id), foreign key (filenameId) references entryNames(id))")
                 .run();
             //commits table
             this.db
-                .prepare("create table commits (id integer primary key autoincrement, parentId integer, author integer, treeId integer, description nvarchar(255), timestamp unsigned big int, foreign key (treeId) references trees(id), foreign key (parentId) references commits(id))")
+                .prepare("create table commits (id integer primary key autoincrement, parentId integer,"+
+                " author integer, treeId integer, description nvarchar(255), timestamp unsigned big int, "+
+                "foreign key (treeId) references trees(id), foreign key (parentId) references commits(id))")
                 .run();
             //branches table
             this.db
@@ -84,11 +91,28 @@ class RepositoryDB {
     addTree(parent, dirname, getId) {
         let resultId;
         this.db.transaction(() => {
-            this.db.prepare("insert into trees values (null, @dirname, @parent)")
-                .run({ dirname, parent });
+   
+            
+
+            let nameId = this.db
+                .prepare("select id from entryNames where name = @dirname")
+                .get({ dirname });
+
+            if(!nameId){
+                this.db
+                    .prepare("insert or ignore into entryNames values (null, @dirname)")
+                    .run({ dirname });
+                nameId = this.preparedStatments.lastInsertedRowId.get().id;
+            }
+            else {
+                nameId = nameId.id;
+            }
+            
+            this.db.prepare("insert into trees values (null, @nameId, @parent)")
+                .run({ nameId, parent });
+
             if (getId) {
-                resultId = this.db.prepare('select last_insert_rowid() as id')
-                    .get().id;
+                resultId = this.preparedStatments.lastInsertedRowId.get().id;
             }
         })()
         return resultId;
@@ -127,7 +151,8 @@ class RepositoryDB {
     getSubtrees(rootTreeId) {
         const result = this.db
             .prepare("with recursive explore_dir(treeId, parent, dirname) as ( values(@rootTreeId, null, null)" +
-                " union select trees.id, trees.parent, trees.dirname from trees, explore_dir" +
+                " union select trees.id, trees.parent, entryNames.name as dirname from trees, explore_dir" +
+                " join entryNames on entryNames.id = trees.dirnameId"+
                 " where explore_dir.treeId = trees.parent)" +
                 " select treeId, parent, dirname from explore_dir")
             .all({ rootTreeId });
@@ -146,7 +171,7 @@ class RepositoryDB {
         const populateTree = (rootTree, trees) => {
             const children = getStraightChildren(trees, rootTree.treeId)
             const files = this.db
-                .prepare("select fileId, fileName from treeFiles where treeId = @treeId")
+                .prepare("select treeFiles.id, fileId, name as fileName from treeFiles join entryNames on entryNames.id = filenameId where treeId = @treeId")
                 .all({ treeId: rootTree.treeId })
                 .map(file => new File(file));
             return new Tree(
@@ -161,7 +186,7 @@ class RepositoryDB {
             .get({ head: commit }).treeId;
         const subtrees = this.getSubtrees(rootTreeId)
         const rootTree = this.db
-            .prepare("select id as treeId, parent, dirname from trees where id = @treeId")
+            .prepare("select trees.id as treeId, parent, name as dirname from trees join entryNames on entryNames.id = dirnameId where trees.id = @treeId")
             .get({ treeId: rootTreeId })
         return populateTree(rootTree, subtrees);
     }
@@ -198,10 +223,25 @@ class RepositoryDB {
     addFile(data, fileName, treeId) {
         const hash = sha256.hex(data);
         this.db.transaction(() => {
-            this.db.prepare("insert or ignore into files values (@hash, @data)")
+            this.db.prepare("insert or ignore into files values (null, @hash, @data)")
                 .run({ hash, data });
-            this.db.prepare("insert into treeFiles values (null, @hash, @treeId, @fileName)")
-                .run({ hash, treeId, fileName });
+
+
+            let nameId = this.db
+                .prepare("select id from entryNames where name = @fileName")
+                .get({ fileName });
+
+            if(!nameId){
+                this.db
+                    .prepare("insert or ignore into entryNames values (null, @fileName)")
+                    .run({ fileName });
+                nameId = this.preparedStatments.lastInsertedRowId.get().id;
+            }
+            else nameId = nameId.id;
+
+
+            this.db.prepare("insert into treeFiles values (null, (select id from files where hash = @hash), @treeId, @nameId)")
+                .run({ hash, treeId, nameId });
         })()
     }
     // Commit:
@@ -234,10 +274,10 @@ class RepositoryDB {
         return result;
     }
 
-    getBlob(hash){
+    getBlob(id){
         return this.db
-            .prepare("select file from files where hash = @hash")
-            .get({ hash }).file
+            .prepare("select file from files where id = @id")
+            .get({ id }).file
     }
 }
 

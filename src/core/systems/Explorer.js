@@ -65,7 +65,7 @@ class Explorer {
                 //console.log('mkdir as', pathToTree);
             }
             tree.files.forEach(file => {
-                fs.writeFileSync(path.resolve(pathToTree, file.fileName), repo.getBlob(file.hash));
+                fs.writeFileSync(path.resolve(pathToTree, file.fileName), repo.getBlob(file.id));
                 //console.log('writing file', file.fileName, 'in dir', pathToTree)
             })
 
